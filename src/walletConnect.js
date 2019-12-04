@@ -1,8 +1,16 @@
-import Connector from "@walletconnect/core";
-import * as crypto from "./crypto";
+const Connector = require("@walletconnect/core").default;
+const crypto = require("./crypto");
 
-export class WalletConnect extends Connector {
+const clientMeta = {
+  description: "WalletConnect Bakaoh",
+  url: "https://bakaoh.com",
+  name: "Bakaoh"
+};
+
+class WalletConnect extends Connector {
   constructor(opts) {
-    super(crypto, opts);
+    super(crypto, opts, null, null, clientMeta);
   }
 }
+
+module.exports = WalletConnect;

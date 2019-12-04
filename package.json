@@ -4,8 +4,11 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@walletconnect/core": "^1.0.0-beta.39",
-    "@walletconnect/utils": "^1.0.0-beta.39",
-    "qrcode-terminal": "^0.12.0"
+    "@walletconnect/core": "^1.0.0-beta.37",
+    "@walletconnect/utils": "^1.0.0-beta.37",
+    "qrcode-terminal": "^0.12.0",
+    "web3": "^0.18.2",
+    "web3-provider-engine": "^14.0.5",
+    "ws": "^6.0.0"
   }
 }

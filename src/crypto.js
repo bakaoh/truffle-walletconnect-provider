@@ -1,5 +1,5 @@
-import * as crypto from "crypto";
-import {
+const crypto = require("crypto");
+const {
   convertHexToArrayBuffer,
   convertArrayBufferToBuffer,
   convertUtf8ToBuffer,
@@ -8,12 +8,12 @@ import {
   convertHexToBuffer,
   concatBuffers,
   removeHexPrefix
-} from "@walletconnect/utils";
+} = require("@walletconnect/utils");
 
 const AES_ALGORITHM = "AES-256-CBC";
 const HMAC_ALGORITHM = "SHA256";
 
-export function randomBytes(length) {
+function randomBytes(length) {
   return new Promise((resolve, reject) => {
     crypto.randomBytes(length, (error, result) => {
       if (error) {
@@ -24,7 +24,7 @@ export function randomBytes(length) {
   });
 }
 
-export async function generateKey(length) {
+async function generateKey(length) {
   const _length = (length || 256) / 8;
   const buffer = await randomBytes(_length);
   const hex = convertBufferToHex(buffer, true);
@@ -33,7 +33,7 @@ export async function generateKey(length) {
   return result;
 }
 
-export async function createHmac(data, key) {
+async function createHmac(data, key) {
   const hmac = crypto.createHmac(HMAC_ALGORITHM, key);
   hmac.update(data);
   const hex = hmac.digest("hex");
@@ -42,7 +42,7 @@ export async function createHmac(data, key) {
   return result;
 }
 
-export async function verifyHmac(payload, key) {
+async function verifyHmac(payload, key) {
   const cipherText = convertHexToBuffer(payload.data);
   const iv = convertHexToBuffer(payload.iv);
   const hmac = convertHexToBuffer(payload.hmac);
@@ -58,7 +58,7 @@ export async function verifyHmac(payload, key) {
   return false;
 }
 
-export async function aesCbcEncrypt(data, key, iv) {
+async function aesCbcEncrypt(data, key, iv) {
   const encoding = "hex";
   const input = data.toString(encoding);
   const cipher = crypto.createCipheriv(AES_ALGORITHM, key, iv);
@@ -68,7 +68,7 @@ export async function aesCbcEncrypt(data, key, iv) {
   return result;
 }
 
-export async function aesCbcDecrypt(data, key, iv) {
+async function aesCbcDecrypt(data, key, iv) {
   const decipher = crypto.createDecipheriv(AES_ALGORITHM, key, iv);
   let decrypted = decipher.update(data);
   decrypted = concatBuffers(decrypted, decipher.final());
@@ -76,7 +76,7 @@ export async function aesCbcDecrypt(data, key, iv) {
   return result;
 }
 
-export async function encrypt(data, key) {
+async function encrypt(data, key) {
   const _key = convertArrayBufferToBuffer(key);
 
   const ivArrayBuffer = await generateKey(128);
@@ -100,7 +100,7 @@ export async function encrypt(data, key) {
   };
 }
 
-export async function decrypt(payload, key) {
+async function decrypt(payload, key) {
   const _key = convertArrayBufferToBuffer(key);
 
   if (!_key) {
@@ -125,3 +125,14 @@ export async function decrypt(payload, key) {
 
   return data;
 }
+
+module.exports = {
+  randomBytes,
+  generateKey,
+  createHmac,
+  verifyHmac,
+  aesCbcEncrypt,
+  aesCbcDecrypt,
+  encrypt,
+  decrypt
+};

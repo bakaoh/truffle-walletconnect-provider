@@ -1,5 +1,7 @@
 const WalletProvider = require("./src/provider");
 
+let provider = new WalletProvider("http://127.0.0.1:7545");
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -40,9 +42,8 @@ module.exports = {
     // },
 
     wallet: {
-      provider: () => new WalletProvider(`https://network.io`),
-      network_id: 2111, // This network is yours, in the cloud.
-      production: true // Treats this network as if it was a public net. (default: false)
+      provider: () => provider,
+      network_id: "*"
     }
   },
 
