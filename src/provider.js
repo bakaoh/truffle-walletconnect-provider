@@ -6,6 +6,7 @@ const NonceSubProvider = require("web3-provider-engine/subproviders/nonce-tracke
 const HookedSubprovider = require("web3-provider-engine/subproviders/hooked-wallet.js");
 const ProviderSubprovider = require("web3-provider-engine/subproviders/provider.js");
 const Web3 = require("web3");
+const { Transaction } = require("ethereumjs-tx");
 
 const WalletConnect = require("./walletConnect");
 const qrcode = require("qrcode-terminal");
@@ -57,22 +58,89 @@ HDWalletProvider.prototype.connect = async function() {
     console.log("Waiting for the message to be signed");
     this.accounts = await connect(walletConnector);
   }
-  return this.accounts;
+  console.log("connect", this.accounts);
+  return Promise.resolve(this.accounts);
 };
 
 function HDWalletProvider(provider, shareNonce = true) {
-  this.walletConnector = new WalletConnect({
+  let walletConnector = new WalletConnect({
     bridge: "https://bridge.walletconnect.org"
   });
-  connecting = this.connect();
+  this.walletConnector = walletConnector;
+  // let connecting = this.connect();
 
+  let that = this;
   this.engine = new ProviderEngine();
   this.engine.addProvider(
     new HookedSubprovider({
       getAccounts: function(cb) {
-        connecting.then(accounts => cb(null, accounts));
+        console.log("getAccounts");
+        that
+          .connect()
+          .then(accounts => {
+            console.log("getAccounts", accounts);
+            cb(null, accounts);
+          })
+          .catch(e => console.log(e));
       },
+
+      // processSignTransaction: async (txParams, cb) => {
+      //   try {
+      //     await that.connect();
+      //     const result = await walletConnector.signTransaction({
+      //       from: txParams.from.toLowerCase(),
+      //       to: "0x0000000000000000000000000000000000000000",
+      //       gasLimit: txParams.gas, // Required
+      //       gasPrice: txParams.gasPrice, // Required
+      //       value: "0x0", // Required
+      //       data: txParams.data, // Required
+      //       nonce: txParams.nonce // Required
+      //     });
+      //     cb(null, result);
+      //   } catch (error) {
+      //     cb(error);
+      //   }
+      // }
+      // getPrivateKey: function(address, cb) {
+      //   console.log("getPrivateKey", address);
+      //   // if (!tmp_wallets[address]) { return cb('Account not found'); }
+      //   // else { cb(null, tmp_wallets[address].getPrivateKey().toString('hex')); }
+      // },
+      // processSignTransaction: async (txParams, cb) => {
+      //   try {
+      //     const wc = await this.getWalletConnector()
+      //     const result = await wc.signTransaction(txParams)
+      //     cb(null, result)
+      //   } catch (error) {
+      //     cb(error)
+      //   }
+      // },
       signTransaction: function(txParams, cb) {
+        const tx1 = new Transaction(txParams);
+        console.log("tx1:", tx1.toJSON(true));
+        const tx2 = new Transaction({
+          to: "0x0000000000000000000000000000000000000000",
+          value: "0x00",
+          ...txParams
+        });
+        console.log("tx2:", tx2.toJSON(true));
+
+        console.log("txParams", txParams);
+        walletConnector
+          .signTransaction({
+            from: txParams.from.toLowerCase(),
+            to: txParams.to ? txParams.to.toLowerCase() : "0x",
+            gasLimit: txParams.gas, // Required
+            gasPrice: txParams.gasPrice, // Required
+            value: "0x00", // Required
+            data: txParams.data, // Required
+            nonce: txParams.nonce // Required
+          })
+          .then(r => {
+            console.log(r);
+            cb(null, r);
+          })
+          .catch(e => console.log("kldjfsd", e));
         // let pkey;
         // const from = txParams.from.toLowerCase();
         // if (tmp_wallets[from]) {
@@ -86,6 +154,13 @@ function HDWalletProvider(provider, shareNonce = true) {
         // cb(null, rawTx);
       },
       signMessage(message, cb) {
+        console.log("message", message);
+        that
+          .connect()
+          .then(() => {
+            cb(null, "sdkflsd");
+          })
+          .catch(e => console.log(e));
         // const dataIfExists = message.data;
         // if (!dataIfExists) {
         //   cb("No data to sign");
@@ -110,7 +185,9 @@ function HDWalletProvider(provider, shareNonce = true) {
   this.engine.addProvider(new FiltersSubprovider());
   if (typeof provider === "string") {
     this.engine.addProvider(
-      new ProviderSubprovider(new Web3.providers.HttpProvider(provider))
+      new ProviderSubprovider(
+        new Web3.providers.HttpProvider(provider, { keepAlive: false })
+      )
     );
   } else {
     this.engine.addProvider(new ProviderSubprovider(provider));
@@ -119,26 +196,30 @@ function HDWalletProvider(provider, shareNonce = true) {
 }
 
 HDWalletProvider.prototype.sendAsync = function() {
+  console.log("sendAsync", arguments);
   this.engine.sendAsync.apply(this.engine, arguments);
 };
 
 HDWalletProvider.prototype.send = function() {
+  console.log("send", arguments);
   return this.engine.send.apply(this.engine, arguments);
 };
 
-// // returns the address of the given address_index, first checking the cache
-// HDWalletProvider.prototype.getAddress = function(idx) {
-//   // debug("getting addresses", this.addresses[0], idx);
-//   // if (!idx) {
-//   //   return this.addresses[0];
-//   // } else {
-//   //   return this.addresses[idx];
-//   // }
-// };
+// returns the address of the given address_index, first checking the cache
+HDWalletProvider.prototype.getAddress = function(idx) {
+  console.log("getAddress");
+  // debug("getting addresses", this.addresses[0], idx);
+  // if (!idx) {
+  //   return this.addresses[0];
+  // } else {
+  //   return this.addresses[idx];
+  // }
+};
 
-// // returns the addresses cache
-// HDWalletProvider.prototype.getAddresses = function() {
-//   // return this.addresses;
-// };
+// returns the addresses cache
+HDWalletProvider.prototype.getAddresses = function() {
+  console.log("getAddresses");
+  // return this.addresses;
+};
 
 module.exports = HDWalletProvider;

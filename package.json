@@ -4,11 +4,14 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@truffle/provider": "^0.2.3",
     "@walletconnect/core": "^1.0.0-beta.37",
+    "@walletconnect/react-native": "^1.0.0-beta.39",
     "@walletconnect/utils": "^1.0.0-beta.37",
+    "ethereumjs-tx": "^2.1.1",
     "qrcode-terminal": "^0.12.0",
-    "web3": "^0.18.2",
-    "web3-provider-engine": "^14.0.5",
+    "web3": "1.2.2",
+    "web3-provider-engine": "https://github.com/bakaoh/web3-provider-engine#web3-one",
     "ws": "^6.0.0"
   }
 }

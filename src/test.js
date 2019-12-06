@@ -43,13 +43,14 @@ async function test() {
   walletConnector = new WalletConnect({
     bridge: "https://bridge.walletconnect.org"
   });
-  await walletConnector.createSession({ chainId: 1 });
-  const { uri } = walletConnector;
-  console.log("WalletConnect URI: ", uri);
-  console.log("\nScan this QR with your WalletConnect-compatible wallet: \n");
-  await showQR(uri);
-  console.log("Waiting for the message to be signed");
-  await connect(walletConnector);
+  console.log(walletConnector.clientMeta)
+  // await walletConnector.createSession({ chainId: 1 });
+  // const { uri } = walletConnector;
+  // console.log("WalletConnect URI: ", uri);
+  // console.log("\nScan this QR with your WalletConnect-compatible wallet: \n");
+  // await showQR(uri);
+  // console.log("Waiting for the message to be signed");
+  // await connect(walletConnector);
 }
 
 test().catch(e => console.log(e));
