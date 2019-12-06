@@ -1,15 +1,14 @@
 WebSocket = require("ws");
 
+const Web3 = require("web3");
+const qrcode = require("qrcode-terminal");
+const chalk = require('chalk');
 const ProviderEngine = require("web3-provider-engine");
 const FiltersSubprovider = require("web3-provider-engine/subproviders/filters.js");
 const NonceSubProvider = require("web3-provider-engine/subproviders/nonce-tracker.js");
 const HookedSubprovider = require("web3-provider-engine/subproviders/hooked-wallet.js");
 const ProviderSubprovider = require("web3-provider-engine/subproviders/provider.js");
-const Web3 = require("web3");
-const { Transaction } = require("ethereumjs-tx");
-
 const WalletConnect = require("./walletConnect");
-const qrcode = require("qrcode-terminal");
 
 const singletonNonceSubProvider = new NonceSubProvider();
 
@@ -26,18 +25,15 @@ async function connect(walletConnector) {
   return new Promise((resolve, reject) => {
     walletConnector.on("connect", (error, payload) => {
       if (error) {
-        console.log("connect", error);
         reject(error);
         return;
       }
 
       const { accounts } = payload.params[0];
-      console.log(`Wallet connected, using address ${accounts[0]}`);
+      console.log(chalk.blue(`Wallet connected, using address ${accounts[0]}`));
       resolve(accounts);
     });
     walletConnector.on("session_update", (error, payload) => {
-      console.log("session_update", error);
-
       const { accounts, chainId } = payload.params[0];
     });
     walletConnector.on("disconnect", (error, payload) => {
@@ -47,22 +43,21 @@ async function connect(walletConnector) {
   });
 }
 
-HDWalletProvider.prototype.connect = async function() {
+WalletConnectProvider.prototype.connect = async function() {
   walletConnector = this.walletConnector;
   if (!walletConnector.connected) {
     await walletConnector.createSession();
     const { uri } = walletConnector;
-    console.log("WalletConnect URI: ", uri);
-    console.log("\nScan this QR with your WalletConnect-compatible wallet: \n");
+    console.log("> Scan this QR with your WalletConnect-compatible wallet: \n");
+    console.log(`URI: ${uri}\n`);
     await showQR(uri);
-    console.log("Waiting for the message to be signed");
+    console.log(chalk.blue("Waiting for the message to be signed"));
     this.accounts = await connect(walletConnector);
   }
-  console.log("connect", this.accounts);
   return Promise.resolve(this.accounts);
 };
 
-function HDWalletProvider(provider, shareNonce = true) {
+function WalletConnectProvider(provider, shareNonce = true) {
   let walletConnector = new WalletConnect({
     bridge: "https://bridge.walletconnect.org"
   });
@@ -74,58 +69,15 @@ function HDWalletProvider(provider, shareNonce = true) {
   this.engine.addProvider(
     new HookedSubprovider({
       getAccounts: function(cb) {
-        console.log("getAccounts");
         that
           .connect()
           .then(accounts => {
-            console.log("getAccounts", accounts);
             cb(null, accounts);
           })
-          .catch(e => console.log(e));
+          .catch(e => cb(e));
       },
-
-      // processSignTransaction: async (txParams, cb) => {
-      //   try {
-      //     await that.connect();
-      //     const result = await walletConnector.signTransaction({
-      //       from: txParams.from.toLowerCase(),
-      //       to: "0x0000000000000000000000000000000000000000",
-      //       gasLimit: txParams.gas, // Required
-      //       gasPrice: txParams.gasPrice, // Required
-      //       value: "0x0", // Required
-      //       data: txParams.data, // Required
-      //       nonce: txParams.nonce // Required
-      //     });
-      //     cb(null, result);
-      //   } catch (error) {
-      //     cb(error);
-      //   }
-      // }
-      // getPrivateKey: function(address, cb) {
-      //   console.log("getPrivateKey", address);
-      //   // if (!tmp_wallets[address]) { return cb('Account not found'); }
-      //   // else { cb(null, tmp_wallets[address].getPrivateKey().toString('hex')); }
-      // },
-      // processSignTransaction: async (txParams, cb) => {
-      //   try {
-      //     const wc = await this.getWalletConnector()
-      //     const result = await wc.signTransaction(txParams)
-      //     cb(null, result)
-      //   } catch (error) {
-      //     cb(error)
-      //   }
-      // },
       signTransaction: function(txParams, cb) {
-        const tx1 = new Transaction(txParams);
-        console.log("tx1:", tx1.toJSON(true));
-        const tx2 = new Transaction({
-          to: "0x0000000000000000000000000000000000000000",
-          value: "0x00",
-          ...txParams
-        });
-        console.log("tx2:", tx2.toJSON(true));
-
-        console.log("txParams", txParams);
+        console.log(chalk.blue("\nApprove or reject request using your wallet\n"));
         walletConnector
           .signTransaction({
             from: txParams.from.toLowerCase(),
@@ -137,21 +89,11 @@ function HDWalletProvider(provider, shareNonce = true) {
             nonce: txParams.nonce // Required
           })
           .then(r => {
-            console.log(r);
             cb(null, r);
           })
-          .catch(e => console.log("kldjfsd", e));
-        // let pkey;
-        // const from = txParams.from.toLowerCase();
-        // if (tmp_wallets[from]) {
-        //   pkey = tmp_wallets[from].getPrivateKey();
-        // } else {
-        //   cb("Account not found");
-        // }
-        // const tx = new Transaction(txParams);
-        // tx.sign(pkey);
-        // const rawTx = "0x" + tx.serialize().toString("hex");
-        // cb(null, rawTx);
+          .catch(e => {
+            cb(e);
+          });
       },
       signMessage(message, cb) {
         console.log("message", message);
@@ -195,31 +137,12 @@ function HDWalletProvider(provider, shareNonce = true) {
   this.engine.start(); // Required by the provider engine.
 }
 
-HDWalletProvider.prototype.sendAsync = function() {
-  console.log("sendAsync", arguments);
+WalletConnectProvider.prototype.sendAsync = function() {
   this.engine.sendAsync.apply(this.engine, arguments);
 };
 
-HDWalletProvider.prototype.send = function() {
-  console.log("send", arguments);
+WalletConnectProvider.prototype.send = function() {
   return this.engine.send.apply(this.engine, arguments);
 };
 
-// returns the address of the given address_index, first checking the cache
-HDWalletProvider.prototype.getAddress = function(idx) {
-  console.log("getAddress");
-  // debug("getting addresses", this.addresses[0], idx);
-  // if (!idx) {
-  //   return this.addresses[0];
-  // } else {
-  //   return this.addresses[idx];
-  // }
-};
-
-// returns the addresses cache
-HDWalletProvider.prototype.getAddresses = function() {
-  console.log("getAddresses");
-  // return this.addresses;
-};
-
-module.exports = HDWalletProvider;
+module.exports = WalletConnectProvider;

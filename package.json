@@ -1,17 +1,39 @@
 {
-  "name": "truffle-provider",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "truffle-walletconnect-provider",
+  "version": "0.1.0",
+  "description": "WalletConnect-enabled Web3 provider",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "mocha --timeout 5000",
+    "example": "cd examples && truffle migrate --network wallet"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bakaoh/truffle-walletconnect-provider.git"
+  },
+  "keywords": [
+    "ethereum",
+    "walletconnect",
+    "provider"
+  ],
+  "author": "bakaoh <tatattai@gmail.com>",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bakaoh/truffle-walletconnect-provider/issues"
+  },
+  "homepage": "https://github.com/bakaoh/truffle-walletconnect-provider#readme",
   "dependencies": {
     "@truffle/provider": "^0.2.3",
     "@walletconnect/core": "^1.0.0-beta.37",
-    "@walletconnect/react-native": "^1.0.0-beta.39",
     "@walletconnect/utils": "^1.0.0-beta.37",
-    "ethereumjs-tx": "^2.1.1",
+    "chalk": "^3.0.0",
     "qrcode-terminal": "^0.12.0",
     "web3": "1.2.2",
     "web3-provider-engine": "https://github.com/bakaoh/web3-provider-engine#web3-one",
     "ws": "^6.0.0"
+  },
+  "devDependencies": {
+    "ganache-core": "^2.1.0",
+    "mocha": "^5.1.1"
   }
 }

@@ -1,4 +1,4 @@
-const WalletProvider = require("./src/provider");
+const WalletProvider = require("../src");
 
 let provider = new WalletProvider("http://127.0.0.1:7545");
 
