@@ -2,7 +2,7 @@ WebSocket = require("ws");
 
 const Web3 = require("web3");
 const qrcode = require("qrcode-terminal");
-const chalk = require('chalk');
+const chalk = require("chalk");
 const ProviderEngine = require("web3-provider-engine");
 const FiltersSubprovider = require("web3-provider-engine/subproviders/filters.js");
 const NonceSubProvider = require("web3-provider-engine/subproviders/nonce-tracker.js");
@@ -12,137 +12,122 @@ const WalletConnect = require("./walletConnect");
 
 const singletonNonceSubProvider = new NonceSubProvider();
 
-function showQR(data) {
+function showQR(uri) {
   return new Promise(resolve => {
-    qrcode.generate(data, { small: true }, qr => {
+    qrcode.generate(uri, { small: true }, qr => {
+      console.log(`> Scan this QR with your WalletConnect-compatible wallet:`);
+      console.log(`\nURI: ${uri}\n`);
       console.log(qr);
       resolve();
     });
   });
 }
 
-async function connect(walletConnector) {
+function connect(walletConnector) {
+  console.log(chalk.blue("Waiting for the message to be signed"));
   return new Promise((resolve, reject) => {
     walletConnector.on("connect", (error, payload) => {
       if (error) {
         reject(error);
         return;
       }
-
       const { accounts } = payload.params[0];
       console.log(chalk.blue(`Wallet connected, using address ${accounts[0]}`));
-      resolve(accounts);
-    });
-    walletConnector.on("session_update", (error, payload) => {
-      const { accounts, chainId } = payload.params[0];
-    });
-    walletConnector.on("disconnect", (error, payload) => {
-      console.log("disconnect", error);
-      reject(error);
+      resolve();
     });
   });
 }
 
-WalletConnectProvider.prototype.connect = async function() {
-  walletConnector = this.walletConnector;
-  if (!walletConnector.connected) {
-    await walletConnector.createSession();
-    const { uri } = walletConnector;
-    console.log("> Scan this QR with your WalletConnect-compatible wallet: \n");
-    console.log(`URI: ${uri}\n`);
-    await showQR(uri);
-    console.log(chalk.blue("Waiting for the message to be signed"));
-    this.accounts = await connect(walletConnector);
-  }
-  return Promise.resolve(this.accounts);
-};
+class WalletConnectProvider {
+  constructor(provider, shareNonce = true) {
+    this.walletConnector = new WalletConnect({
+      bridge: "https://bridge.walletconnect.org"
+    });
 
-function WalletConnectProvider(provider, shareNonce = true) {
-  let walletConnector = new WalletConnect({
-    bridge: "https://bridge.walletconnect.org"
-  });
-  this.walletConnector = walletConnector;
-  // let connecting = this.connect();
-
-  let that = this;
-  this.engine = new ProviderEngine();
-  this.engine.addProvider(
-    new HookedSubprovider({
-      getAccounts: function(cb) {
-        that
-          .connect()
-          .then(accounts => {
-            cb(null, accounts);
-          })
-          .catch(e => cb(e));
-      },
-      signTransaction: function(txParams, cb) {
-        console.log(chalk.blue("\nApprove or reject request using your wallet\n"));
-        walletConnector
-          .signTransaction({
-            from: txParams.from.toLowerCase(),
-            to: txParams.to ? txParams.to.toLowerCase() : "0x",
-            gasLimit: txParams.gas, // Required
-            gasPrice: txParams.gasPrice, // Required
-            value: "0x00", // Required
-            data: txParams.data, // Required
-            nonce: txParams.nonce // Required
-          })
-          .then(r => {
-            cb(null, r);
-          })
-          .catch(e => {
-            cb(e);
-          });
-      },
-      signMessage(message, cb) {
-        console.log("message", message);
-        that
-          .connect()
-          .then(() => {
-            cb(null, "sdkflsd");
-          })
-          .catch(e => console.log(e));
-        // const dataIfExists = message.data;
-        // if (!dataIfExists) {
-        //   cb("No data to sign");
-        // }
-        // if (!tmp_wallets[message.from]) {
-        //   cb("Account not found");
-        // }
-        // let pkey = tmp_wallets[message.from].getPrivateKey();
-        // const dataBuff = ethUtil.toBuffer(dataIfExists);
-        // const msgHashBuff = ethUtil.hashPersonalMessage(dataBuff);
-        // const sig = ethUtil.ecsign(msgHashBuff, pkey);
-        // const rpcSig = ethUtil.toRpcSig(sig.v, sig.r, sig.s);
-        // cb(null, rpcSig);
-      }
-    })
-  );
-
-  !shareNonce
-    ? this.engine.addProvider(new NonceSubProvider())
-    : this.engine.addProvider(singletonNonceSubProvider);
-
-  this.engine.addProvider(new FiltersSubprovider());
-  if (typeof provider === "string") {
+    this.engine = new ProviderEngine();
+    this.engine.addProvider(
+      new HookedSubprovider({
+        getAccounts: cb => this.getAccounts(cb),
+        signTransaction: (txParams, cb) => this.signTransaction(txParams, cb),
+        signMessage: (message, cb) => this.signMessage(message, cb)
+      })
+    );
+    this.engine.addProvider(
+      shareNonce ? singletonNonceSubProvider : new NonceSubProvider()
+    );
+    this.engine.addProvider(new FiltersSubprovider());
     this.engine.addProvider(
       new ProviderSubprovider(
-        new Web3.providers.HttpProvider(provider, { keepAlive: false })
+        typeof provider === "string"
+          ? new Web3.providers.HttpProvider(provider, { keepAlive: false })
+          : provider
       )
     );
-  } else {
-    this.engine.addProvider(new ProviderSubprovider(provider));
+    this.engine.start(); // Required by the provider engine.
   }
-  this.engine.start(); // Required by the provider engine.
+
+  sendAsync() {
+    this.engine.sendAsync.apply(this.engine, arguments);
+  }
+
+  send() {
+    return this.engine.send.apply(this.engine, arguments);
+  }
+
+  async getConnector() {
+    const wc = this.walletConnector;
+    if (!wc.connected) {
+      await wc.createSession();
+      await showQR(wc.uri);
+      await connect(wc);
+      wc.on("session_update", (error, payload) => {});
+      wc.on("disconnect", (error, payload) => {
+        console.log(chalk.red("\nDisconnected from your wallet\n"));
+        this.engine.stop();
+        process.exit(1);
+      });
+    }
+    return wc;
+  }
+
+  async getAccounts(cb) {
+    try {
+      const wc = await this.getConnector();
+      cb(null, wc.accounts);
+    } catch (err) {
+      cb(err);
+    }
+  }
+
+  async signTransaction(txParams, cb) {
+    try {
+      const wc = await this.getConnector();
+      console.log(chalk.blue("\nApprove request using your wallet\n"));
+      const result = await wc.signTransaction({
+        from: txParams.from.toLowerCase(),
+        to: txParams.to ? txParams.to.toLowerCase() : "0x",
+        gasLimit: txParams.gas,
+        gasPrice: txParams.gasPrice,
+        value: txParams.value || "0x00",
+        data: txParams.data,
+        nonce: txParams.nonce
+      });
+      cb(null, result);
+    } catch (err) {
+      cb(err);
+    }
+  }
+
+  async signMessage(message, cb) {
+    try {
+      const wc = await this.getConnector();
+      console.log(chalk.blue("\nApprove request using your wallet\n"));
+      const result = await wc.signMessage([message.from, message.data]);
+      cb(null, result);
+    } catch (err) {
+      cb(err);
+    }
+  }
 }
-
-WalletConnectProvider.prototype.sendAsync = function() {
-  this.engine.sendAsync.apply(this.engine, arguments);
-};
-
-WalletConnectProvider.prototype.send = function() {
-  return this.engine.send.apply(this.engine, arguments);
-};
 
 module.exports = WalletConnectProvider;
