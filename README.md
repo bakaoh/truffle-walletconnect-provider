@@ -4,6 +4,9 @@
 
 WalletConnect-enabled Web3 provider. Use it to sign transactions using WalletConnect-compatible wallet
 
+
+[DEMO](https://youtu.be/m9Bh99gxYHg)
+
 ## Install
 
 ```
