@@ -30,7 +30,7 @@
     "qrcode-terminal": "^0.12.0",
     "web3": "1.2.2",
     "web3-provider-engine": "https://github.com/bakaoh/web3-provider-engine#web3-one",
-    "ws": "^6.0.0"
+    "ws": "^7.4.6"
   },
   "devDependencies": {
     "ganache-core": "^2.1.0",
